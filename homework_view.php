@@ -64,13 +64,23 @@ include __DIR__ . '/header.php';
   .game-title { font-size:24px; line-height:1.2; font-weight:900; color:#0f172a; }
   .game-reward { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
   .game-reward span { display:inline-flex; align-items:center; gap:6px; border-radius:14px; background:#fff; border:1px solid #fed7aa; color:#9a3412; padding:10px 12px; font-weight:900; }
-  .game-progress { height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden; margin-top:14px; }
+  .game-progress-wrap { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; margin-top:14px; }
+  .game-progress { height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden; }
   .game-progress span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#22c55e,#14b8a6); }
+  .game-percent { font-weight:900; color:#0f766e; font-size:13px; min-width:44px; text-align:right; }
   .game-body { padding:24px; display:grid; grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr); gap:22px; }
   .game-steps { display:grid; gap:12px; }
-  .game-step { display:grid; grid-template-columns:36px 1fr; gap:12px; align-items:start; background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:13px; }
+  .game-step { width:100%; text-align:left; display:grid; grid-template-columns:36px 1fr auto; gap:12px; align-items:center; background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:13px; cursor:pointer; }
+  .game-step:hover { border-color:#22c55e; box-shadow:0 10px 20px rgba(34,197,94,.08); transform:translateY(-1px); }
+  .game-step.is-done { background:#ecfdf5; border-color:#86efac; }
   .game-step-num { width:36px; height:36px; border-radius:12px; background:#1a237e; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; }
+  .game-step.is-done .game-step-num { background:#16a34a; }
+  .game-check { width:28px; height:28px; border-radius:999px; border:2px solid #cbd5e1; display:flex; align-items:center; justify-content:center; color:transparent; }
+  .game-step.is-done .game-check { border-color:#16a34a; background:#16a34a; color:#fff; }
   .game-call { background:#fff; border:1px solid #bae6fd; border-radius:16px; padding:18px; color:#0f5280; font-weight:800; line-height:1.6; }
+  .game-finish { margin-top:14px; display:none; border-radius:14px; background:#dcfce7; border:1px solid #86efac; color:#166534; padding:12px 14px; font-weight:900; }
+  .game-finish.is-visible { display:block; }
+  .game-start { margin-top:14px; display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:12px; background:#1a237e; color:#fff; padding:11px 14px; font-weight:900; }
   @media(max-width: 900px){ .game-hero-head,.game-body{grid-template-columns:1fr}.game-reward{justify-content:flex-start} }
 </style>
 <div class="max-w-5xl mx-auto space-y-6">
@@ -96,7 +106,10 @@ include __DIR__ . '/header.php';
         <div>
           <div class="game-kicker"><span class="material-symbols-outlined text-sm">extension</span><?= e(gamified_level_label($homework['togloom_turul'] ?? null)) ?></div>
           <div class="game-title"><?= e((string)($homework['togloom_zorilgo'] ?: $homework['garchig'])) ?></div>
-          <div class="game-progress"><span style="width:<?= (int)$gameProgress ?>%"></span></div>
+          <div class="game-progress-wrap">
+            <div class="game-progress"><span id="gameProgressBar" style="width:<?= (int)$gameProgress ?>%"></span></div>
+            <div class="game-percent" id="gameProgressText"><?= (int)$gameProgress ?>%</div>
+          </div>
         </div>
         <div class="game-reward">
           <span><span class="material-symbols-outlined">star</span><?= (int)($homework['od_shagnal'] ?? 3) ?> од</span>
@@ -108,18 +121,61 @@ include __DIR__ . '/header.php';
           <h4 class="font-headline font-extrabold text-primary text-lg mb-3">Аяллын алхмууд</h4>
           <div class="game-steps">
             <?php foreach ($gameSteps as $idx => $step): ?>
-              <div class="game-step">
+              <button class="game-step" type="button" data-step="<?= $idx ?>">
                 <div class="game-step-num"><?= $idx + 1 ?></div>
                 <div class="text-slate-700 leading-7"><?= e($step) ?></div>
-              </div>
+                <div class="game-check"><span class="material-symbols-outlined text-sm">check</span></div>
+              </button>
             <?php endforeach; ?>
           </div>
         </div>
         <div class="game-call">
           <?= e((string)($homework['tav_duudlaga'] ?: 'Чи чадна! Алхам бүрийг дуусгаад хариугаа илгээгээрэй.')) ?>
+          <div class="game-finish" id="gameFinish">Бүх алхам дууслаа. Одоо хариугаа илгээж шагналаа аваарай!</div>
+          <?php if ($canSubmit): ?>
+            <a class="game-start" href="submission_create.php?daalgavar_id=<?= e((string)$homework['daalgavar_id']) ?>">
+              <span class="material-symbols-outlined">play_arrow</span>
+              Хариу илгээх
+            </a>
+          <?php endif; ?>
         </div>
       </div>
     </section>
+    <script>
+      (function(){
+        const key = 'game-homework-<?= (int)$homework['daalgavar_id'] ?>';
+        const steps = Array.from(document.querySelectorAll('.game-step[data-step]'));
+        const bar = document.getElementById('gameProgressBar');
+        const text = document.getElementById('gameProgressText');
+        const finish = document.getElementById('gameFinish');
+        let done = [];
+        try { done = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { done = []; }
+
+        function save() {
+          localStorage.setItem(key, JSON.stringify(done));
+        }
+
+        function render() {
+          steps.forEach((step, index) => {
+            step.classList.toggle('is-done', done.includes(index));
+          });
+          const percent = steps.length ? Math.round((done.length / steps.length) * 100) : 0;
+          if (bar) bar.style.width = percent + '%';
+          if (text) text.textContent = percent + '%';
+          if (finish) finish.classList.toggle('is-visible', steps.length > 0 && done.length === steps.length);
+        }
+
+        steps.forEach((step, index) => {
+          step.addEventListener('click', () => {
+            done = done.includes(index) ? done.filter(item => item !== index) : [...done, index];
+            done.sort((a, b) => a - b);
+            save();
+            render();
+          });
+        });
+        render();
+      })();
+    </script>
   <?php endif; ?>
 
   <section class="bg-white rounded-2xl shadow-sm border overflow-hidden">

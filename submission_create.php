@@ -89,8 +89,17 @@ include __DIR__ . '/header.php';
 .sub-game-rewards{display:flex;gap:8px;flex-wrap:wrap}
 .sub-game-rewards span{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#fff;color:#9a3412;border:1px solid #fed7aa;padding:6px 9px;font-size:12px;font-weight:900}
 .sub-game-steps{display:grid;gap:8px;margin-top:12px}
-.sub-game-step{display:grid;grid-template-columns:28px 1fr;gap:9px;align-items:start;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px}
+.sub-game-step{width:100%;text-align:left;display:grid;grid-template-columns:28px 1fr auto;gap:9px;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px;cursor:pointer}
+.sub-game-step:hover{border-color:#22c55e}
+.sub-game-step.is-done{background:#ecfdf5;border-color:#86efac}
 .sub-game-step b{width:28px;height:28px;border-radius:9px;background:#1a237e;color:#fff;display:flex;align-items:center;justify-content:center}
+.sub-game-step.is-done b{background:#16a34a}
+.sub-game-check{width:24px;height:24px;border-radius:999px;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;color:transparent}
+.sub-game-step.is-done .sub-game-check{background:#16a34a;border-color:#16a34a;color:#fff}
+.sub-game-progress{height:9px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:12px}
+.sub-game-progress span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#22c55e,#14b8a6);width:0}
+.sub-game-finish{display:none;margin-top:10px;border-radius:12px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:10px;font-weight:900;font-size:13px}
+.sub-game-finish.is-visible{display:block}
 @media (max-width: 1024px){.submission-layout{grid-template-columns:1fr}}
 </style>
 
@@ -155,9 +164,11 @@ include __DIR__ . '/header.php';
                 </div>
                 <div class="sub-game-steps">
                   <?php foreach ($gameSteps as $idx => $step): ?>
-                    <div class="sub-game-step"><b><?= $idx + 1 ?></b><span><?= e($step) ?></span></div>
+                    <button class="sub-game-step" type="button" data-sub-step="<?= $idx ?>"><b><?= $idx + 1 ?></b><span><?= e($step) ?></span><i class="sub-game-check"><span class="material-symbols-outlined text-sm">check</span></i></button>
                   <?php endforeach; ?>
                 </div>
+                <div class="sub-game-progress"><span id="subGameProgressBar"></span></div>
+                <div class="sub-game-finish" id="subGameFinish">Алхмууд бэлэн. Одоо хариугаа илгээхэд болно!</div>
               </div>
             <?php endif; ?>
           <?php endif; ?>
@@ -207,4 +218,37 @@ include __DIR__ . '/header.php';
     </div>
   </form>
 </div>
+<?php if ($isGameHomework): ?>
+<script>
+  (function(){
+    const key = 'game-homework-<?= (int)$selectedHomework['daalgavar_id'] ?>';
+    const steps = Array.from(document.querySelectorAll('.sub-game-step[data-sub-step]'));
+    const bar = document.getElementById('subGameProgressBar');
+    const finish = document.getElementById('subGameFinish');
+    let done = [];
+    try { done = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { done = []; }
+
+    function save() {
+      localStorage.setItem(key, JSON.stringify(done));
+    }
+
+    function render() {
+      steps.forEach((step, index) => step.classList.toggle('is-done', done.includes(index)));
+      const percent = steps.length ? Math.round((done.length / steps.length) * 100) : 0;
+      if (bar) bar.style.width = percent + '%';
+      if (finish) finish.classList.toggle('is-visible', steps.length > 0 && done.length === steps.length);
+    }
+
+    steps.forEach((step, index) => {
+      step.addEventListener('click', () => {
+        done = done.includes(index) ? done.filter(item => item !== index) : [...done, index];
+        done.sort((a, b) => a - b);
+        save();
+        render();
+      });
+    });
+    render();
+  })();
+</script>
+<?php endif; ?>
 <?php include __DIR__ . '/footer.php'; ?>

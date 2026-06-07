@@ -29,6 +29,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $odShagnal = max(1, min(5, (int)($_POST['od_shagnal'] ?? 3)));
     $turshlagaOnoo = max(0, (int)($_POST['turshlaga_onoo'] ?? 10));
     $tavDuudlaga = trim($_POST['tav_duudlaga'] ?? '');
+    $courseMeta = $hicheelBagshId ? one_row(
+        'SELECT a.angi_ner FROM hicheel_bagsh hb JOIN angi a ON a.angi_id = hb.angi_id WHERE hb.hicheel_bagsh_id = ? AND hb.bagsh_id = ? LIMIT 1',
+        [$hicheelBagshId, $teacherId]
+    ) : null;
+    $primaryHomework = is_primary_grade($courseMeta['angi_ner'] ?? '');
+
+    if ($primaryHomework) {
+        $togloomchilson = 1;
+        $garchig = $togloomZorilgo !== '' ? $togloomZorilgo : gamified_level_label($togloomTurul);
+        $tailbarParts = array_filter([$togloomZorilgo, $togloomAlham, $tavDuudlaga], fn($value) => trim((string)$value) !== '');
+        $tailbar = $tailbarParts ? implode("\n\n", $tailbarParts) : gamified_level_label($togloomTurul);
+        $onoo = $turshlagaOnoo > 0 ? $turshlagaOnoo : 100;
+    }
     
     $tuluv = 'Идэвхтэй';
     $filePath = '';
@@ -109,27 +122,27 @@ include __DIR__ . '/header.php';
   <form method="post" enctype="multipart/form-data" id="homeworkForm">
     <div class="grid lg:grid-cols-[1fr_310px] gap-8 items-start">
       <div class="space-y-7">
-        <section class="hw-card p-7 space-y-6">
+        <section class="hw-card p-7 space-y-6" id="standardHomeworkSection">
           <div>
             <label class="hw-label">Хичээл сонгох</label>
-            <select name="hicheel_bagsh_id" class="hw-select" required>
+            <select name="hicheel_bagsh_id" class="hw-select" id="courseSelect" required>
               <option value="">Сонгох...</option>
               <?php foreach ($teacherCourses as $c): ?>
-                <option value="<?= e((string)$c['hicheel_bagsh_id']) ?>">
+                <option value="<?= e((string)$c['hicheel_bagsh_id']) ?>" data-primary="<?= is_primary_grade($c['angi_ner'] ?? '') ? '1' : '0' ?>">
                   <?= e(($c['hicheel_kod'] ? $c['hicheel_kod'].' · ' : '').$c['hicheel_ner'].' / '.$c['angi_ner'].' / '.$c['surgaltiin_jil']) ?>
                 </option>
               <?php endforeach; ?>
             </select>
           </div>
 
-          <div>
+          <div id="standardTitleField">
             <label class="hw-label">Гарчиг</label>
-            <input name="garchig" class="hw-input" placeholder="Жишээ: Гэрийн даалгавар #1" required>
+            <input name="garchig" id="titleInput" class="hw-input" placeholder="Жишээ: Гэрийн даалгавар #1" required>
           </div>
 
-          <div>
+          <div id="standardDescriptionField">
             <label class="hw-label">Тайлбар</label>
-            <textarea name="tailbar" class="hw-textarea" placeholder="Даалгаврын заавар, шаардлагуудыг энд дэлгэрэнгүй бичнэ үү..."></textarea>
+            <textarea name="tailbar" id="descriptionInput" class="hw-textarea" placeholder="Даалгаврын заавар, шаардлагуудыг энд дэлгэрэнгүй бичнэ үү..."></textarea>
           </div>
         </section>
 
@@ -171,12 +184,12 @@ include __DIR__ . '/header.php';
               <p class="text-sm text-slate-500 mt-2">Бага ангийн хүүхдэд даалгаврыг аялал, шат, од, XP оноотойгоор харуулна.</p>
             </div>
             <label class="hw-switch" title="Тоглоомчилсон хэлбэрээр харуулах">
-              <input type="checkbox" name="togloomchilson" value="1" checked>
+              <input type="checkbox" name="togloomchilson" id="gameToggle" value="1" checked>
               <span class="hw-slider"></span>
             </label>
           </div>
 
-          <div class="game-note">Зөвлөмж: 1-5-р ангид нэг даалгаврыг 3-5 богино алхамтай, эерэг урамшууллын үгтэй оруулбал хүүхэд өөрөө хийхэд илүү ойлгомжтой байна.</div>
+          <div class="game-note" id="primaryGameNotice">Зөвлөмж: 1-5-р ангид нэг даалгаврыг 3-5 богино алхамтай, эерэг урамшууллын үгтэй оруулбал хүүхэд өөрөө хийхэд илүү ойлгомжтой байна.</div>
 
           <div>
             <label class="hw-label">Тоглоомын хэлбэр</label>
@@ -198,7 +211,7 @@ include __DIR__ . '/header.php';
 
           <div>
             <label class="hw-label">Хүүхдэд харагдах зорилго</label>
-            <input name="togloom_zorilgo" class="hw-input" placeholder="Жишээ: Өнөөдөр 5 шинэ үг сурч, од цуглуулъя">
+            <input name="togloom_zorilgo" id="gameGoalInput" class="hw-input" placeholder="Жишээ: Өнөөдөр 5 шинэ үг сурч, од цуглуулъя">
           </div>
 
           <div>
@@ -240,10 +253,10 @@ include __DIR__ . '/header.php';
 
           <div class="hw-divider"></div>
 
-          <div>
+          <div id="scoreSetting">
             <label class="hw-label">Хамгийн их оноо</label>
             <div class="hw-score-wrap">
-              <input name="hamgiin_ih_onoo" type="number" min="0" step="0.01" value="100" required>
+              <input name="hamgiin_ih_onoo" id="scoreInput" type="number" min="0" step="0.01" value="100" required>
               <span>Оноо</span>
             </div>
           </div>
@@ -273,6 +286,55 @@ include __DIR__ . '/header.php';
   const selectedFileName = document.getElementById('selectedFileName');
   const videoBox = document.getElementById('videoBox');
   const videoInput = document.getElementById('videoInput');
+  const courseSelect = document.getElementById('courseSelect');
+  const standardTitleField = document.getElementById('standardTitleField');
+  const standardDescriptionField = document.getElementById('standardDescriptionField');
+  const titleInput = document.getElementById('titleInput');
+  const descriptionInput = document.getElementById('descriptionInput');
+  const scoreSetting = document.getElementById('scoreSetting');
+  const scoreInput = document.getElementById('scoreInput');
+  const gameToggle = document.getElementById('gameToggle');
+  const gameGoalInput = document.getElementById('gameGoalInput');
+  const primaryGameNotice = document.getElementById('primaryGameNotice');
+
+  function isPrimarySelected(){
+    const option = courseSelect?.selectedOptions?.[0];
+    return option?.dataset?.primary === '1';
+  }
+
+  function syncHomeworkMode(){
+    const primary = isPrimarySelected();
+    if (standardTitleField) standardTitleField.style.display = primary ? 'none' : '';
+    if (standardDescriptionField) standardDescriptionField.style.display = primary ? 'none' : '';
+    if (scoreSetting) scoreSetting.style.display = primary ? 'none' : '';
+    if (titleInput) titleInput.required = !primary;
+    if (descriptionInput && primary) descriptionInput.value = '';
+    if (scoreInput) {
+      scoreInput.required = !primary;
+      if (primary && scoreInput.value === '') scoreInput.value = '100';
+    }
+    if (gameToggle) {
+      gameToggle.checked = primary || gameToggle.checked;
+      gameToggle.disabled = primary;
+    }
+    if (gameGoalInput) gameGoalInput.required = primary;
+    if (primaryGameNotice) {
+      primaryGameNotice.textContent = primary
+        ? 'Сонгосон анги 1-5-р анги тул энэ даалгавар зөвхөн тоглоомчилсон хэлбэрээр бүртгэгдэнэ. Гарчиг, тайлбар, ердийн оноо автоматаар үүснэ.'
+        : 'Зөвлөмж: 1-5-р ангид нэг даалгаврыг 3-5 богино алхамтай, эерэг урамшууллын үгтэй оруулбал хүүхэд өөрөө хийхэд илүү ойлгомжтой байна.';
+    }
+  }
+
+  courseSelect?.addEventListener('change', syncHomeworkMode);
+  syncHomeworkMode();
+
+  document.getElementById('homeworkForm')?.addEventListener('submit', function(){
+    if (isPrimarySelected() && gameToggle) {
+      gameToggle.disabled = false;
+      gameToggle.checked = true;
+    }
+  });
+
   fileInput?.addEventListener('change', function(){
     if (fileInput.files && fileInput.files[0]) {
       selectedFileName.textContent = fileInput.files[0].name;
