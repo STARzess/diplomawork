@@ -57,6 +57,22 @@ $gameProgress = gamified_progress_percent($homework['duusah_ognoo'], !empty($sub
 $pageTitle = 'Даалгаврын дэлгэрэнгүй';
 include __DIR__ . '/header.php';
 ?>
+<style>
+  .game-hero { border-radius:20px; overflow:hidden; border:1px solid #fed7aa; background:linear-gradient(135deg,#fff7ed,#ecfeff); box-shadow:0 14px 34px rgba(15,23,42,.07); }
+  .game-hero-head { display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; padding:24px; border-bottom:1px solid rgba(251,146,60,.25); }
+  .game-kicker { display:inline-flex; align-items:center; gap:7px; border-radius:999px; background:#ffedd5; color:#c2410c; padding:6px 12px; font-size:12px; font-weight:900; margin-bottom:10px; }
+  .game-title { font-size:24px; line-height:1.2; font-weight:900; color:#0f172a; }
+  .game-reward { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+  .game-reward span { display:inline-flex; align-items:center; gap:6px; border-radius:14px; background:#fff; border:1px solid #fed7aa; color:#9a3412; padding:10px 12px; font-weight:900; }
+  .game-progress { height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden; margin-top:14px; }
+  .game-progress span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#22c55e,#14b8a6); }
+  .game-body { padding:24px; display:grid; grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr); gap:22px; }
+  .game-steps { display:grid; gap:12px; }
+  .game-step { display:grid; grid-template-columns:36px 1fr; gap:12px; align-items:start; background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:13px; }
+  .game-step-num { width:36px; height:36px; border-radius:12px; background:#1a237e; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; }
+  .game-call { background:#fff; border:1px solid #bae6fd; border-radius:16px; padding:18px; color:#0f5280; font-weight:800; line-height:1.6; }
+  @media(max-width: 900px){ .game-hero-head,.game-body{grid-template-columns:1fr}.game-reward{justify-content:flex-start} }
+</style>
 <div class="max-w-5xl mx-auto space-y-6">
   <section class="bg-white rounded-2xl shadow-sm border overflow-hidden">
     <div class="p-6 border-b">
@@ -73,6 +89,38 @@ include __DIR__ . '/header.php';
     </div>
     <div class="p-6 prose prose-slate max-w-none whitespace-pre-line leading-7 text-slate-700"><?= nl2br(e((string)($homework['tailbar'] ?: 'Тайлбар оруулаагүй байна.'))) ?></div>
   </section>
+
+  <?php if ($isGameHomework): ?>
+    <section class="game-hero">
+      <div class="game-hero-head">
+        <div>
+          <div class="game-kicker"><span class="material-symbols-outlined text-sm">extension</span><?= e(gamified_level_label($homework['togloom_turul'] ?? null)) ?></div>
+          <div class="game-title"><?= e((string)($homework['togloom_zorilgo'] ?: $homework['garchig'])) ?></div>
+          <div class="game-progress"><span style="width:<?= (int)$gameProgress ?>%"></span></div>
+        </div>
+        <div class="game-reward">
+          <span><span class="material-symbols-outlined">star</span><?= (int)($homework['od_shagnal'] ?? 3) ?> од</span>
+          <span><span class="material-symbols-outlined">bolt</span><?= (int)($homework['turshlaga_onoo'] ?? 10) ?> XP</span>
+        </div>
+      </div>
+      <div class="game-body">
+        <div>
+          <h4 class="font-headline font-extrabold text-primary text-lg mb-3">Аяллын алхмууд</h4>
+          <div class="game-steps">
+            <?php foreach ($gameSteps as $idx => $step): ?>
+              <div class="game-step">
+                <div class="game-step-num"><?= $idx + 1 ?></div>
+                <div class="text-slate-700 leading-7"><?= e($step) ?></div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <div class="game-call">
+          <?= e((string)($homework['tav_duudlaga'] ?: 'Чи чадна! Алхам бүрийг дуусгаад хариугаа илгээгээрэй.')) ?>
+        </div>
+      </div>
+    </section>
+  <?php endif; ?>
 
   <section class="bg-white rounded-2xl shadow-sm border overflow-hidden">
     <div class="p-6 border-b flex justify-between items-center gap-4">

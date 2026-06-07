@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/functions.php';
+ensure_gamified_homework_schema();
 require_roles(['Багш']);
 close_expired_homeworks();
 
@@ -33,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     exit;
 }
 
-$sql = 'SELECT gd.daalgavar_id, gd.garchig, gd.tailbar, \'Энгийн\' AS daalgavar_turul, gd.ogson_ognoo, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.tuluv,
+$sql = 'SELECT gd.daalgavar_id, gd.garchig, gd.tailbar, \'Энгийн\' AS daalgavar_turul, gd.togloomchilson, gd.togloom_turul, gd.od_shagnal, gd.turshlaga_onoo, gd.ogson_ognoo, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.tuluv,
                h.hicheel_ner, h.hicheel_kod, a.angi_id, a.angi_ner,
                COUNT(DISTINCT dh.hariu_id) AS hariu_too,
                COUNT(DISTINCT u.unelgee_id) AS unelgee_too
@@ -105,7 +106,16 @@ include __DIR__ . '/header.php';
           $statusClass = $overdue ? 'status-pill status-danger' : 'status-pill status-active';
         ?>
         <tr class="border-t align-top hover:bg-slate-50/60">
-          <td class="p-4"><div class="font-semibold text-slate-900"><?= e($row['garchig']) ?></div><div class="text-xs text-slate-500 mt-1 line-clamp-2"><?= e((string)$row['tailbar']) ?></div></td>
+          <td class="p-4">
+            <div class="font-semibold text-slate-900"><?= e($row['garchig']) ?></div>
+            <?php if (!empty($row['togloomchilson']) && is_primary_grade($row['angi_ner'] ?? '')): ?>
+              <div class="mt-2 inline-flex items-center gap-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 text-xs font-extrabold">
+                <span class="material-symbols-outlined text-sm">extension</span>
+                <?= e(gamified_level_label($row['togloom_turul'] ?? null)) ?> · <?= (int)($row['od_shagnal'] ?? 3) ?> од · <?= (int)($row['turshlaga_onoo'] ?? 10) ?> XP
+              </div>
+            <?php endif; ?>
+            <div class="text-xs text-slate-500 mt-1 line-clamp-2"><?= e((string)$row['tailbar']) ?></div>
+          </td>
           <td class="p-4"><?= e($row['hicheel_ner']) ?></td>
           <td class="p-4"><span class="inline-flex bg-indigo-50 text-indigo-700 text-xs font-semibold px-2 py-1 rounded-lg"><?= e($row['angi_ner']) ?></span></td>
           <td class="p-4 min-w-[190px]"><div><?= e(format_dt($row['duusah_ognoo'])) ?></div><div class="text-xs <?= $overdue ? 'text-red-600' : 'text-slate-500' ?> mt-1 leading-5"><?= e(homework_time_text($row['duusah_ognoo'])) ?></div></td>

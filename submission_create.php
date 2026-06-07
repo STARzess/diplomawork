@@ -1,16 +1,17 @@
 <?php
 require_once __DIR__ . '/functions.php';
+ensure_gamified_homework_schema();
 require_roles(['Сурагч']);
 close_expired_homeworks();
 
 $studentId = current_user()['id'];
 $selected = (int)($_GET['daalgavar_id'] ?? 0);
 
-$homeworks = all_rows('SELECT gd.daalgavar_id, gd.garchig, \'Энгийн\' AS daalgavar_turul, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.ogson_ognoo, h.hicheel_ner FROM geriin_daalgavar gd JOIN hicheel_bagsh hb ON hb.hicheel_bagsh_id=gd.hicheel_bagsh_id JOIN suragch s ON s.angi_id=hb.angi_id JOIN hicheel h ON h.hicheel_id=hb.hicheel_id LEFT JOIN daalgavriin_hariu dh ON dh.daalgavar_id=gd.daalgavar_id AND dh.suragch_id=? WHERE s.suragch_id=? AND dh.hariu_id IS NULL AND gd.duusah_ognoo >= NOW() AND gd.tuluv="Идэвхтэй" ORDER BY gd.duusah_ognoo ASC', [$studentId, $studentId]);
+$homeworks = all_rows('SELECT gd.daalgavar_id, gd.garchig, \'Энгийн\' AS daalgavar_turul, gd.togloomchilson, gd.togloom_turul, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.ogson_ognoo, h.hicheel_ner, a.angi_ner FROM geriin_daalgavar gd JOIN hicheel_bagsh hb ON hb.hicheel_bagsh_id=gd.hicheel_bagsh_id JOIN suragch s ON s.angi_id=hb.angi_id JOIN hicheel h ON h.hicheel_id=hb.hicheel_id JOIN angi a ON a.angi_id=hb.angi_id LEFT JOIN daalgavriin_hariu dh ON dh.daalgavar_id=gd.daalgavar_id AND dh.suragch_id=? WHERE s.suragch_id=? AND dh.hariu_id IS NULL AND gd.duusah_ognoo >= NOW() AND gd.tuluv="Идэвхтэй" ORDER BY gd.duusah_ognoo ASC', [$studentId, $studentId]);
 
 $selectedHomework = null;
 if ($selected) {
-    $selectedHomework = one_row('SELECT gd.daalgavar_id, gd.garchig, gd.tailbar, \'Энгийн\' AS daalgavar_turul, gd.duusah_ognoo, gd.ogson_ognoo, gd.hamgiin_ih_onoo, gd.tuluv, h.hicheel_ner FROM geriin_daalgavar gd JOIN hicheel_bagsh hb ON hb.hicheel_bagsh_id=gd.hicheel_bagsh_id JOIN suragch s ON s.angi_id=hb.angi_id JOIN hicheel h ON h.hicheel_id=hb.hicheel_id LEFT JOIN daalgavriin_hariu dh ON dh.daalgavar_id=gd.daalgavar_id AND dh.suragch_id=? WHERE gd.daalgavar_id=? AND s.suragch_id=? AND dh.hariu_id IS NULL LIMIT 1', [$studentId, $selected, $studentId]);
+    $selectedHomework = one_row('SELECT gd.daalgavar_id, gd.garchig, gd.tailbar, \'Энгийн\' AS daalgavar_turul, gd.togloomchilson, gd.togloom_turul, gd.togloom_zorilgo, gd.togloom_alham, gd.od_shagnal, gd.turshlaga_onoo, gd.tav_duudlaga, gd.duusah_ognoo, gd.ogson_ognoo, gd.hamgiin_ih_onoo, gd.tuluv, h.hicheel_ner, a.angi_ner FROM geriin_daalgavar gd JOIN hicheel_bagsh hb ON hb.hicheel_bagsh_id=gd.hicheel_bagsh_id JOIN suragch s ON s.angi_id=hb.angi_id JOIN hicheel h ON h.hicheel_id=hb.hicheel_id JOIN angi a ON a.angi_id=hb.angi_id LEFT JOIN daalgavriin_hariu dh ON dh.daalgavar_id=gd.daalgavar_id AND dh.suragch_id=? WHERE gd.daalgavar_id=? AND s.suragch_id=? AND dh.hariu_id IS NULL LIMIT 1', [$studentId, $selected, $studentId]);
     if ($selectedHomework && is_homework_overdue($selectedHomework['duusah_ognoo'])) {
         try { db()->prepare("UPDATE geriin_daalgavar SET tuluv='Хугацаа дууссан' WHERE daalgavar_id=?")->execute([$selected]); } catch (Throwable $e) {}
         flash('Энэ даалгаврын хугацаа дууссан тул хариу илгээх боломжгүй.', 'error');
@@ -47,6 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     flash('Хариуны агуулга оруулна уу.', 'error');
 }
 
+$isGameHomework = $selectedHomework && !empty($selectedHomework['togloomchilson']) && is_primary_grade($selectedHomework['angi_ner'] ?? '');
+$gameSteps = $selectedHomework ? gamified_steps($selectedHomework['togloom_alham'] ?? '') : [];
+
 $pageTitle = 'Даалгаврын хариу илгээх';
 include __DIR__ . '/header.php';
 ?>
@@ -79,6 +83,14 @@ include __DIR__ . '/header.php';
 .sub-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:12px;padding:13px 26px;font-weight:700}
 .sub-btn-primary{background:#162a95;color:#fff;box-shadow:0 8px 18px rgba(37,99,235,.18)}
 .sub-btn-secondary{background:#fff;color:#334155;border:1px solid #cbd5e1}
+.sub-game-box{border:1px solid #fed7aa;background:linear-gradient(135deg,#fff7ed,#ecfeff);border-radius:18px;padding:18px;margin-top:18px}
+.sub-game-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.sub-game-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:#ffedd5;color:#c2410c;padding:5px 10px;font-size:12px;font-weight:900;margin-bottom:8px}
+.sub-game-rewards{display:flex;gap:8px;flex-wrap:wrap}
+.sub-game-rewards span{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#fff;color:#9a3412;border:1px solid #fed7aa;padding:6px 9px;font-size:12px;font-weight:900}
+.sub-game-steps{display:grid;gap:8px;margin-top:12px}
+.sub-game-step{display:grid;grid-template-columns:28px 1fr;gap:9px;align-items:start;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px}
+.sub-game-step b{width:28px;height:28px;border-radius:9px;background:#1a237e;color:#fff;display:flex;align-items:center;justify-content:center}
 @media (max-width: 1024px){.submission-layout{grid-template-columns:1fr}}
 </style>
 
@@ -128,6 +140,26 @@ include __DIR__ . '/header.php';
                 <div class="text-xs text-slate-500 mt-1"><?= e(homework_time_text($selectedHomework['duusah_ognoo'])) ?></div>
               </div>
             </div>
+
+            <?php if ($isGameHomework): ?>
+              <div class="sub-game-box">
+                <div class="sub-game-top">
+                  <div>
+                    <div class="sub-game-badge"><span class="material-symbols-outlined text-sm">extension</span><?= e(gamified_level_label($selectedHomework['togloom_turul'] ?? null)) ?></div>
+                    <div class="font-extrabold text-slate-900 leading-6"><?= e((string)($selectedHomework['togloom_zorilgo'] ?: $selectedHomework['garchig'])) ?></div>
+                  </div>
+                  <div class="sub-game-rewards">
+                    <span><span class="material-symbols-outlined text-sm">star</span><?= (int)($selectedHomework['od_shagnal'] ?? 3) ?> од</span>
+                    <span><span class="material-symbols-outlined text-sm">bolt</span><?= (int)($selectedHomework['turshlaga_onoo'] ?? 10) ?> XP</span>
+                  </div>
+                </div>
+                <div class="sub-game-steps">
+                  <?php foreach ($gameSteps as $idx => $step): ?>
+                    <div class="sub-game-step"><b><?= $idx + 1 ?></b><span><?= e($step) ?></span></div>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+            <?php endif; ?>
           <?php endif; ?>
         </div>
 
