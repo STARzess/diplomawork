@@ -7,7 +7,7 @@ $pageTitle = $role === 'Сурагч' ? 'Миний үнэлгээ' : 'Тайл�
 if ($role === 'Сурагч') {
     $studentId = current_user()['id'];
 
-    $rows = all_rows('SELECT h.hicheel_ner, gd.garchig, u.avsan_onoo, u.bagshiin_tailbar, u.unelsen_ognoo
+    $rows = all_rows('SELECT h.hicheel_ner, gd.garchig, gd.daalgavar_turul, u.avsan_onoo, u.bagshiin_tailbar, u.unelsen_ognoo
                       FROM unelgee u
                       JOIN daalgavriin_hariu dh ON dh.hariu_id=u.hariu_id
                       JOIN geriin_daalgavar gd ON gd.daalgavar_id=dh.daalgavar_id
@@ -16,7 +16,7 @@ if ($role === 'Сурагч') {
                       WHERE dh.suragch_id=?
                       ORDER BY u.unelsen_ognoo DESC', [$studentId]);
 
-    $performanceRows = all_rows('SELECT h.hicheel_ner, gd.garchig, gd.duusah_ognoo,
+    $performanceRows = all_rows('SELECT h.hicheel_ner, gd.garchig, gd.daalgavar_turul, gd.duusah_ognoo,
                                         dh.hariu_id, dh.ilgeesen_ognoo, u.avsan_onoo,
                                         CASE
                                             WHEN dh.hariu_id IS NOT NULL AND dh.ilgeesen_ognoo > gd.duusah_ognoo THEN "Хоцорсон"
@@ -109,6 +109,7 @@ if ($role === 'Сурагч') {
         <div class="space-y-4">
           <div class="summary-item"><span>Нийт үнэлгээ</span><strong><?= e((string)count($rows)) ?></strong></div>
           <div class="summary-item"><span>Дундаж оноо</span><strong><?= e((string)$avgScore) ?></strong></div>
+          <div class="summary-item"><span>Тестийн үнэлгээ</span><strong><?= e((string)count(array_filter($rows, fn($r) => ($r['daalgavar_turul'] ?? '') === 'Тест'))) ?></strong></div>
         </div>
       </div>
     </div>
@@ -164,7 +165,7 @@ if ($role === 'Сурагч') {
           <div class="perf-row">
             <div>
               <div class="font-semibold text-slate-900"><?= e($pRow['garchig']) ?></div>
-              <div class="text-sm text-slate-500"><?= e($pRow['hicheel_ner']) ?> • Дуусах: <?= e($pRow['duusah_ognoo']) ?></div>
+              <div class="text-sm text-slate-500"><?= e($pRow['hicheel_ner']) ?> • <?= e($pRow['daalgavar_turul'] ?: 'Энгийн') ?> • Дуусах: <?= e($pRow['duusah_ognoo']) ?></div>
             </div>
             <div class="text-right">
               <span class="perf-pill <?= e(student_perf_badge($pRow['guitsetgeliin_tuluv'])) ?>"><?= e($pRow['guitsetgeliin_tuluv']) ?></span>
@@ -179,10 +180,10 @@ if ($role === 'Сурагч') {
     <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
       <div class="p-5 border-b"><h3 class="font-semibold text-lg">Үнэлгээний дэлгэрэнгүй жагсаалт</h3></div>
       <table class="w-full text-sm">
-        <thead class="bg-slate-50"><tr><th class="text-left p-4">Хичээл</th><th class="text-left p-4">Даалгавар</th><th class="text-left p-4">Оноо</th><th class="text-left p-4">Тайлбар</th><th class="text-left p-4">Огноо</th></tr></thead>
+        <thead class="bg-slate-50"><tr><th class="text-left p-4">Хичээл</th><th class="text-left p-4">Даалгавар</th><th class="text-left p-4">Төрөл</th><th class="text-left p-4">Оноо</th><th class="text-left p-4">Тайлбар</th><th class="text-left p-4">Огноо</th></tr></thead>
         <tbody>
         <?php foreach ($rows as $row): ?>
-          <tr class="border-t"><td class="p-4"><?= e($row['hicheel_ner']) ?></td><td class="p-4"><?= e($row['garchig']) ?></td><td class="p-4 font-semibold text-primary"><?= e((string)$row['avsan_onoo']) ?></td><td class="p-4"><?= e((string)$row['bagshiin_tailbar']) ?></td><td class="p-4"><?= e($row['unelsen_ognoo']) ?></td></tr>
+          <tr class="border-t"><td class="p-4"><?= e($row['hicheel_ner']) ?></td><td class="p-4"><?= e($row['garchig']) ?></td><td class="p-4"><?= e($row['daalgavar_turul'] ?: 'Энгийн') ?></td><td class="p-4 font-semibold text-primary"><?= e((string)$row['avsan_onoo']) ?></td><td class="p-4"><?= e((string)$row['bagshiin_tailbar']) ?></td><td class="p-4"><?= e($row['unelsen_ognoo']) ?></td></tr>
         <?php endforeach; ?>
         <?php if (!$rows): ?><tr><td colspan="6" class="empty-state">Одоогоор үнэлгээ бүртгэгдээгүй байна.</td></tr><?php endif; ?>
         </tbody>
@@ -218,6 +219,7 @@ $startDate = trim($_GET['start_date'] ?? '');
 $endDate = trim($_GET['end_date'] ?? '');
 $angiId = (int)($_GET['angi_id'] ?? 0);
 $hicheelId = (int)($_GET['hicheel_id'] ?? 0);
+$daalgavarTurul = trim($_GET['daalgavar_turul'] ?? '');
 $suragchId = (int)($_GET['suragch_id'] ?? 0);
 $tuluv = trim($_GET['tuluv'] ?? '');
 
@@ -263,7 +265,7 @@ if ($report === 'grade-report') {
     $where = [];
     $params = [];
     $sql = 'SELECT s.suragch_id, CONCAT(s.ovog," ",s.ner) AS suragch_ner, a.angi_ner,
-                   h.hicheel_ner, h.hicheel_kod, gd.garchig,
+                   h.hicheel_ner, h.hicheel_kod, gd.garchig, gd.daalgavar_turul,
                    dh.ilgeesen_ognoo, u.unelsen_ognoo, u.avsan_onoo, u.bagshiin_tailbar,
                    gd.hamgiin_ih_onoo
             FROM unelgee u
@@ -278,6 +280,7 @@ if ($report === 'grade-report') {
     if ($endDate !== '') { $where[] = 'DATE(u.unelsen_ognoo) <= ?'; $params[] = $endDate; }
     if ($angiId > 0) { $where[] = 'a.angi_id=?'; $params[] = $angiId; }
     if ($hicheelId > 0) { $where[] = 'h.hicheel_id=?'; $params[] = $hicheelId; }
+    if ($daalgavarTurul !== '') { $where[] = 'gd.daalgavar_turul=?'; $params[] = $daalgavarTurul; }
     if ($suragchId > 0) { $where[] = 's.suragch_id=?'; $params[] = $suragchId; }
     if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);
     $sql .= ' ORDER BY u.unelsen_ognoo DESC, a.angi_ner, s.ovog, s.ner';
@@ -289,7 +292,7 @@ if ($report === 'grade-report') {
     $where = [];
     $params = [];
     $sql = 'SELECT s.suragch_id, CONCAT(s.ovog," ",s.ner) AS suragch_ner, a.angi_ner,
-                   h.hicheel_ner, h.hicheel_kod, gd.garchig,
+                   h.hicheel_ner, h.hicheel_kod, gd.garchig, gd.daalgavar_turul,
                    gd.duusah_ognoo, gd.tuluv AS daalgavar_tuluv,
                    dh.hariu_id, dh.ilgeesen_ognoo, dh.tuluv AS hariu_tuluv,
                    u.avsan_onoo,
@@ -309,6 +312,9 @@ if ($report === 'grade-report') {
             WHERE s.tuluv="Идэвхтэй"';
     if ($isTeacher) { $where[] = 'hb.bagsh_id=?'; $params[] = $teacherId; }
 
+    // Гүйцэтгэлийн тайлангийн огнооны шүүлтүүрийг зөв ажиллуулахын тулд
+    // зөвхөн дуусах огноогоор биш, даалгавар өгсөн огноо, илгээсэн огноо,
+    // үнэлсэн огноо болон дуусах огнооны аль нэг нь сонгосон хугацаанд орсон эсэхээр шалгана.
     if ($startDate !== '' && $endDate !== '') {
         $where[] = '(
             DATE(gd.ogson_ognoo) BETWEEN ? AND ?
@@ -337,6 +343,7 @@ if ($report === 'grade-report') {
 
     if ($angiId > 0) { $where[] = 'a.angi_id=?'; $params[] = $angiId; }
     if ($hicheelId > 0) { $where[] = 'h.hicheel_id=?'; $params[] = $hicheelId; }
+    if ($daalgavarTurul !== '') { $where[] = 'gd.daalgavar_turul=?'; $params[] = $daalgavarTurul; }
     if ($tuluv !== '') {
         if ($tuluv === 'Илгээсэн') $where[] = 'dh.hariu_id IS NOT NULL AND dh.ilgeesen_ognoo <= gd.duusah_ognoo';
         elseif ($tuluv === 'Хоцорсон') $where[] = 'dh.hariu_id IS NOT NULL AND dh.ilgeesen_ognoo > gd.duusah_ognoo';
@@ -356,83 +363,9 @@ if ($report === 'grade-report') {
     }
 }
 
-
-$printStartDate = $startDate !== '' ? $startDate : '-';
-$printEndDate = $endDate !== '' ? $endDate : '-';
-$printDateRange = ($startDate !== '' || $endDate !== '') ? ($printStartDate . ' - ' . $printEndDate) : 'Бүх хугацаа';
-$printedBy = trim((current_user()['name'] ?? '') . ' / ' . $role);
-$printedAt = date('Y-m-d H:i');
-
 include __DIR__ . '/header.php';
 ?>
-<style>
-  @media screen { .print-only { display: none !important; } }
-  @media print {
-    @page { size: A4 landscape; margin: 6mm; }
-    html, body { background: #fff !important; font-family: Arial, Tahoma, "DejaVu Sans", sans-serif !important; color: #111827 !important; }
-    body { zoom: 0.72; }
-    aside, body > div > aside, main > header, .no-print, .report-tabs, .report-filter { display: none !important; }
-    main { margin-left: 0 !important; width: 100% !important; max-width: none !important; }
-    main .p-8 { padding: 0 !important; }
-    .print-only { display: block !important; }
-    .print-report-brand { display: flex !important; align-items: center !important; gap: 8px !important; margin-bottom: 6px !important; }
-    .print-report-logo { width: 30px !important; height: 30px !important; border-radius: 8px !important; background: #1A237E !important; color: #fff !important; display: flex !important; align-items: center !important; justify-content: center !important; flex: 0 0 30px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .print-report-logo svg { width: 20px !important; height: 20px !important; }
-    .print-report-title-main { font-size: 18px !important; line-height: 1.05 !important; font-weight: 800 !important; color: #111827 !important; letter-spacing: 0 !important; }
-    .print-report-title-sub { font-size: 10px !important; color: #475569 !important; margin-top: 2px !important; letter-spacing: 0 !important; }
-    .print-report-heading { text-align: center !important; font-size: 20px !important; font-weight: 800 !important; margin: 6px 0 10px !important; letter-spacing: 0 !important; }
-    .print-meta-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; margin-bottom: 8px !important; }
-    .print-meta-box { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; min-height: 34px !important; }
-    .print-meta-label { display: block !important; font-size: 10px !important; color: #475569 !important; margin-bottom: 2px !important; }
-    .print-meta-value { font-size: 12px !important; font-weight: 800 !important; color: #111827 !important; }
-    .print-separator { border: 0 !important; border-top: 2px solid #111827 !important; margin: 6px 0 8px !important; }
-    .rounded-2xl, .rounded-xl, .rounded-full { border-radius: 0 !important; }
-    .shadow-sm, .shadow, .card { box-shadow: none !important; }
-    .bg-white { background: #fff !important; }
-    .overflow-auto { overflow: visible !important; }
-    .grid.md\:grid-cols-3 { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; margin-bottom: 8px !important; }
-    .grid.md\:grid-cols-4 { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; margin-bottom: 8px !important; }
-    .grid.md\:grid-cols-3 > div, .grid.md\:grid-cols-4 > div { padding: 10px !important; }
-    .text-3xl { font-size: 22px !important; line-height: 1.1 !important; }
-    .p-5 { padding: 10px !important; }
-    .mb-6 { margin-bottom: 8px !important; }
-    table { width: 100% !important; min-width: 0 !important; border-collapse: collapse !important; page-break-inside: auto !important; table-layout: fixed !important; }
-    thead { display: table-header-group !important; }
-    tr { page-break-inside: avoid !important; page-break-after: auto !important; }
-    th, td { border: 1px solid #cbd5e1 !important; padding: 5px 6px !important; font-size: 9px !important; line-height: 1.25 !important; vertical-align: middle !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
-    th { background: #f1f5f9 !important; font-weight: 800 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .min-w-\[980px\], .min-w-\[1100px\] { min-width: 0 !important; }
-    .print-signature { display: block !important; width: 280px !important; margin: 12px 0 0 auto !important; page-break-inside: avoid !important; text-align: center !important; color: #475569 !important; }
-    .print-signature-title { font-size: 10px !important; margin-bottom: 6px !important; }
-    .print-signature-line { border-bottom: 1px solid #111827 !important; height: 18px !important; margin-bottom: 4px !important; }
-    .print-signature-name { font-size: 10px !important; font-weight: 800 !important; color: #111827 !important; }
-  }
-</style>
-
-<div class="print-only">
-  <div class="print-report-brand">
-    <div class="print-report-logo" aria-hidden="true">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 3 2.5 8 12 13 21.5 8 12 3Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
-        <path d="M5.5 10.2V15.4C5.5 16.1 6.05 16.75 7.15 17.35 9.75 18.8 14.25 18.8 16.85 17.35 17.95 16.75 18.5 16.1 18.5 15.4V10.2" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-        <path d="M21.5 8V14" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <div>
-      <div class="print-report-title-main">Гэрийн даалгаврын систем</div>
-      <div class="print-report-title-sub">Сурагчдын гэрийн даалгаврын систем</div>
-    </div>
-  </div>
-  <div class="print-report-heading"><?= e($pageTitle) ?></div>
-  <div class="print-meta-grid">
-    <div class="print-meta-box"><span class="print-meta-label">Тайлан хэвлэсэн огноо:</span><span class="print-meta-value"><?= e($printedAt) ?></span></div>
-    <div class="print-meta-box"><span class="print-meta-label">Тайлангийн огноо:</span><span class="print-meta-value"><?= e($printDateRange) ?></span></div>
-    <div class="print-meta-box"><span class="print-meta-label">Хэвлэсэн хүн:</span><span class="print-meta-value"><?= e($printedBy) ?></span></div>
-  </div>
-  <hr class="print-separator">
-</div>
-
-<div class="grid md:grid-cols-2 gap-4 mb-6 report-tabs no-print">
+<div class="grid md:grid-cols-2 gap-4 mb-6">
   <a href="reports.php?<?= e(report_query_string(['report'=>'grade-report'])) ?>" class="rounded-2xl border p-5 transition shadow-sm <?= $report === 'grade-report' ? 'bg-primary text-white border-primary' : 'bg-white hover:border-indigo-300 hover:shadow' ?>">
     <div class="text-base font-bold leading-6">Сурагчдын үнэлгээний тайлан</div>
   </a>
@@ -441,7 +374,7 @@ include __DIR__ . '/header.php';
   </a>
 </div>
 
-<div class="bg-white rounded-2xl shadow-sm border overflow-hidden mb-6 report-filter no-print">
+<div class="bg-white rounded-2xl shadow-sm border overflow-hidden mb-6">
   <div class="p-5 border-b">
     <h3 class="font-semibold text-lg">Тайлангийн шүүлтүүр</h3>
     <p class="text-sm text-slate-500 mt-1"><?= $report === 'grade-report' ? 'Сурагчдын үнэлгээний тайлан гаргах шүүлтүүрүүд' : 'Сурагчдын гүйцэтгэлийн тайлан гаргах шүүлтүүрүүд' ?></p>
@@ -474,6 +407,14 @@ include __DIR__ . '/header.php';
         <?php endforeach; ?>
       </select>
     </div>
+    <div>
+      <label class="block text-sm font-medium mb-2">Даалгаврын төрөл</label>
+      <select name="daalgavar_turul" class="w-full rounded-xl border-slate-300 px-4 py-3">
+        <option value="">Бүх төрөл</option>
+        <option value="Тест" <?= $daalgavarTurul === 'Тест' ? 'selected' : '' ?>>Тест</option>
+        <option value="Энгийн" <?= $daalgavarTurul === 'Энгийн' ? 'selected' : '' ?>>Энгийн</option>
+      </select>
+    </div>
     <?php if ($report === 'grade-report'): ?>
     <div>
       <label class="block text-sm font-medium mb-2">Сурагч</label>
@@ -497,7 +438,6 @@ include __DIR__ . '/header.php';
     <?php endif; ?>
     <div class="flex gap-2 xl:col-span-2">
       <button class="rounded-xl bg-primary text-white px-5 py-3 font-medium">Тайлан гаргах</button>
-      <button type="button" onclick="window.print()" class="inline-flex items-center justify-center rounded-xl border border-primary bg-white px-5 py-3 text-sm font-semibold text-primary">Хэвлэх</button>
       <a href="reports.php?report=<?= e($report) ?>" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm text-slate-700">Цэвэрлэх</a>
     </div>
   </form>
@@ -512,11 +452,11 @@ include __DIR__ . '/header.php';
 <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
   <div class="p-5 border-b">
     <h3 class="font-semibold text-lg">Сурагчдын үнэлгээний тайлан</h3>
-
+    <p class="text-sm text-slate-500 mt-1">Сурагч бүрийн үнэлгээ, хичээл, даалгаврын төрөл болон үнэлсэн огноог харуулна.</p>
   </div>
   <div class="overflow-auto">
-    <table class="w-full text-sm min-w-[980px]">
-      <thead class="bg-slate-50"><tr><th class="text-left p-4">Сурагч</th><th class="text-left p-4">Анги</th><th class="text-left p-4">Хичээл</th><th class="text-left p-4">Даалгавар</th><th class="text-left p-4">Илгээсэн</th><th class="text-left p-4">Үнэлсэн</th><th class="text-left p-4">Оноо</th><th class="text-left p-4">Үнэлгээ</th><th class="text-left p-4">Тайлбар</th></tr></thead>
+    <table class="w-full text-sm min-w-[1100px]">
+      <thead class="bg-slate-50"><tr><th class="text-left p-4">Сурагч</th><th class="text-left p-4">Анги</th><th class="text-left p-4">Хичээл</th><th class="text-left p-4">Даалгавар</th><th class="text-left p-4">Төрөл</th><th class="text-left p-4">Илгээсэн</th><th class="text-left p-4">Үнэлсэн</th><th class="text-left p-4">Оноо</th><th class="text-left p-4">Үнэлгээ</th><th class="text-left p-4">Тайлбар</th></tr></thead>
       <tbody>
       <?php foreach ($gradeRows as $row): ?>
         <tr class="border-t hover:bg-slate-50/60">
@@ -524,6 +464,7 @@ include __DIR__ . '/header.php';
           <td class="p-4"><?= e($row['angi_ner']) ?></td>
           <td class="p-4"><?= e(($row['hicheel_kod'] ? $row['hicheel_kod'].' - ' : '').$row['hicheel_ner']) ?></td>
           <td class="p-4 font-medium"><?= e($row['garchig']) ?></td>
+          <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-semibold <?= ($row['daalgavar_turul'] ?? '') === 'Тест' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700' ?>"><?= e($row['daalgavar_turul'] ?: 'Энгийн') ?></span></td>
           <td class="p-4 whitespace-nowrap"><?= e(format_dt($row['ilgeesen_ognoo'])) ?></td>
           <td class="p-4 whitespace-nowrap"><?= e(format_dt($row['unelsen_ognoo'])) ?></td>
           <td class="p-4 font-semibold text-primary"><?= e(number_format((float)$row['avsan_onoo'], 2)) ?> / <?= e((string)$row['hamgiin_ih_onoo']) ?></td>
@@ -531,14 +472,9 @@ include __DIR__ . '/header.php';
           <td class="p-4 text-slate-600"><?= e((string)$row['bagshiin_tailbar']) ?></td>
         </tr>
       <?php endforeach; ?>
-      <?php if (!$gradeRows): ?><tr><td colspan="9" class="empty-state">Шүүлтэд тохирох үнэлгээний мэдээлэл олдсонгүй.</td></tr><?php endif; ?>
+      <?php if (!$gradeRows): ?><tr><td colspan="10" class="empty-state">Шүүлтэд тохирох үнэлгээний мэдээлэл олдсонгүй.</td></tr><?php endif; ?>
       </tbody>
     </table>
-  </div>
-  <div class="print-signature">
-    <div class="print-signature-title">Хянасан</div>
-    <div class="print-signature-line"></div>
-
   </div>
 </div>
 <?php else: ?>
@@ -551,10 +487,11 @@ include __DIR__ . '/header.php';
 <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
   <div class="p-5 border-b">
     <h3 class="font-semibold text-lg">Сурагчдын гүйцэтгэлийн тайлан</h3>
+    <p class="text-sm text-slate-500 mt-1">Сурагч бүрийн даалгавар илгээсэн эсэх, хоцорсон эсэх, үнэлэгдсэн эсэхийг харуулна.</p>
   </div>
   <div class="overflow-auto">
-    <table class="w-full text-sm min-w-[980px]">
-      <thead class="bg-slate-50"><tr><th class="text-left p-4">Сурагч</th><th class="text-left p-4">Анги</th><th class="text-left p-4">Хичээл</th><th class="text-left p-4">Даалгавар</th><th class="text-left p-4">Дуусах огноо</th><th class="text-left p-4">Илгээсэн огноо</th><th class="text-left p-4">Төлөв</th><th class="text-left p-4">Оноо</th></tr></thead>
+    <table class="w-full text-sm min-w-[1100px]">
+      <thead class="bg-slate-50"><tr><th class="text-left p-4">Сурагч</th><th class="text-left p-4">Анги</th><th class="text-left p-4">Хичээл</th><th class="text-left p-4">Даалгавар</th><th class="text-left p-4">Төрөл</th><th class="text-left p-4">Дуусах огноо</th><th class="text-left p-4">Илгээсэн огноо</th><th class="text-left p-4">Төлөв</th><th class="text-left p-4">Оноо</th></tr></thead>
       <tbody>
       <?php foreach ($performanceRows as $row): ?>
         <?php
@@ -569,19 +506,16 @@ include __DIR__ . '/header.php';
           <td class="p-4"><?= e($row['angi_ner']) ?></td>
           <td class="p-4"><?= e(($row['hicheel_kod'] ? $row['hicheel_kod'].' - ' : '').$row['hicheel_ner']) ?></td>
           <td class="p-4 font-medium"><?= e($row['garchig']) ?></td>
+          <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-semibold <?= ($row['daalgavar_turul'] ?? '') === 'Тест' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700' ?>"><?= e($row['daalgavar_turul'] ?: 'Энгийн') ?></span></td>
           <td class="p-4 whitespace-nowrap"><?= e(format_dt($row['duusah_ognoo'])) ?></td>
           <td class="p-4 whitespace-nowrap"><?= e(format_dt($row['ilgeesen_ognoo'])) ?></td>
           <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap <?= $badge ?>"><?= e($status) ?></span></td>
           <td class="p-4 font-semibold text-primary"><?= e($row['avsan_onoo'] !== null ? number_format((float)$row['avsan_onoo'], 2) : '-') ?></td>
         </tr>
       <?php endforeach; ?>
-      <?php if (!$performanceRows): ?><tr><td colspan="8" class="empty-state">Шүүлтэд тохирох гүйцэтгэлийн мэдээлэл олдсонгүй.</td></tr><?php endif; ?>
+      <?php if (!$performanceRows): ?><tr><td colspan="9" class="empty-state">Шүүлтэд тохирох гүйцэтгэлийн мэдээлэл олдсонгүй.</td></tr><?php endif; ?>
       </tbody>
     </table>
-  </div>
-  <div class="print-signature">
-    <div class="print-signature-title">Хянасан</div>
-    <div class="print-signature-line"></div>
   </div>
 </div>
 <?php endif; ?>

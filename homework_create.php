@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/functions.php';
-ensure_gamified_homework_schema();
 require_roles(['Багш']);
 
 $teacherId = (int)current_user()['id'];
@@ -21,32 +20,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ogson = trim($_POST['ogson_ognoo'] ?? '');
     $duusah = trim($_POST['duusah_ognoo'] ?? '');
     $onoo = (float)($_POST['hamgiin_ih_onoo'] ?? 100);
+    $turul = trim($_POST['daalgavar_turul'] ?? 'Энгийн');
     $video = trim($_POST['video_link'] ?? '');
-    $togloomchilson = !empty($_POST['togloomchilson']) ? 1 : 0;
-    $togloomTurul = trim($_POST['togloom_turul'] ?? 'mission');
-    $togloomZorilgo = trim($_POST['togloom_zorilgo'] ?? '');
-    $togloomAlham = trim($_POST['togloom_alham'] ?? '');
-    $odShagnal = max(1, min(5, (int)($_POST['od_shagnal'] ?? 3)));
-    $turshlagaOnoo = max(0, (int)($_POST['turshlaga_onoo'] ?? 10));
-    $tavDuudlaga = trim($_POST['tav_duudlaga'] ?? '');
     
     $tuluv = 'Идэвхтэй';
     $filePath = '';
 
-    $filePath = upload_file_if_present('file');
+    if (!in_array($turul, ['Энгийн', 'Тест'], true)) {
+        $turul = 'Энгийн';
+    }
+
+    if ($turul === 'Тест') {
+        $video = '';
+        if (!empty($_FILES['file']['name'])) {
+            flash('Тест төрлийн даалгаварт файл эсвэл видео хавсаргах боломжгүй.', 'error');
+            header('Location: homework_create.php');
+            exit;
+        }
+    } else {
+        $filePath = upload_file_if_present('file');
+    }
 
     if ($hicheelBagshId && $garchig && $duusah) {
         $pdo = db();
         $pdo->beginTransaction();
         try {
             $ogsonSql = $ogson !== '' ? $ogson : date('Y-m-d H:i:s');
-            $stmt = $pdo->prepare('INSERT INTO geriin_daalgavar (hicheel_bagsh_id, garchig, tailbar, togloomchilson, togloom_turul, togloom_zorilgo, togloom_alham, od_shagnal, turshlaga_onoo, tav_duudlaga, ogson_ognoo, duusah_ognoo, hamgiin_ih_onoo, tuluv) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt->execute([$hicheelBagshId, $garchig, $tailbar, $togloomchilson, $togloomTurul, $togloomZorilgo, $togloomAlham, $odShagnal, $turshlagaOnoo, $tavDuudlaga, $ogsonSql, $duusah, $onoo, $tuluv]);
+            $stmt = $pdo->prepare('INSERT INTO geriin_daalgavar (hicheel_bagsh_id, garchig, tailbar, daalgavar_turul, ogson_ognoo, duusah_ognoo, hamgiin_ih_onoo, tuluv) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$hicheelBagshId, $garchig, $tailbar, $turul, $ogsonSql, $duusah, $onoo, $tuluv]);
             $daalgavarId = (int)$pdo->lastInsertId();
 
-            if ($filePath || $video) {
-                $pdo->prepare('INSERT INTO daalgavar_havsralt (daalgavar_id, file_ner, file_zam, video_link, turul) VALUES (?, ?, ?, ?, ?)')
-                    ->execute([$daalgavarId, $filePath ? basename($filePath) : null, $filePath ?: null, $video ?: null, $video ? 'Видео' : 'Файл']);
+            if ($turul === 'Энгийн') {
+                if ($filePath || $video) {
+                    $pdo->prepare('INSERT INTO daalgavar_havsralt (daalgavar_id, file_ner, file_zam, video_link, turul) VALUES (?, ?, ?, ?, ?)')
+                        ->execute([$daalgavarId, $filePath ? basename($filePath) : null, $filePath ?: null, $video ?: null, $video ? 'Видео' : 'Файл']);
+                }
+            } else {
+                $asuultuud = $_POST['asuult'] ?? [];
+                $songolt1 = $_POST['songolt1'] ?? [];
+                $songolt2 = $_POST['songolt2'] ?? [];
+                $songolt3 = $_POST['songolt3'] ?? [];
+                $songolt4 = $_POST['songolt4'] ?? [];
+                $zuv = $_POST['zuv_songolt'] ?? [];
+                $validCount = 0;
+                foreach ($asuultuud as $i => $asuult) {
+                    $asuult = trim((string)$asuult);
+                    $s1 = trim((string)($songolt1[$i] ?? ''));
+                    $s2 = trim((string)($songolt2[$i] ?? ''));
+                    $s3 = trim((string)($songolt3[$i] ?? ''));
+                    $s4 = trim((string)($songolt4[$i] ?? ''));
+                    $z = (int)($zuv[$i] ?? 0);
+                    if ($asuult === '' && $s1 === '' && $s2 === '' && $s3 === '' && $s4 === '') {
+                        continue;
+                    }
+                    if ($asuult === '' || $s1 === '' || $s2 === '' || $s3 === '' || $s4 === '' || $z < 1 || $z > 4) {
+                        throw new RuntimeException('Тестийн асуулт бүр 4 сонголт, зөв хариулттай байх ёстой.');
+                    }
+                    $pdo->prepare('INSERT INTO daalgavriin_asuult (daalgavar_id, asuult, zuv_songolt) VALUES (?, ?, ?)')
+                        ->execute([$daalgavarId, $asuult, $z]);
+                    $asuultId = (int)$pdo->lastInsertId();
+                    foreach ([$s1, $s2, $s3, $s4] as $idx => $choice) {
+                        $pdo->prepare('INSERT INTO daalgavriin_songolt (asuult_id, songolt_dugaar, songolt_text) VALUES (?, ?, ?)')
+                            ->execute([$asuultId, $idx + 1, $choice]);
+                    }
+                    $validCount++;
+                }
+                if ($validCount === 0) {
+                    throw new RuntimeException('Тест төрлийн даалгаварт дор хаяж 1 асуулт шаардлагатай.');
+                }
             }
 
             $pdo->commit();
@@ -96,16 +137,15 @@ include __DIR__ . '/header.php';
   .hw-primary-btn { width:100%; border-radius:8px; background:#202184; color:#fff; padding:15px 18px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow:0 8px 16px rgba(32,33,132,.22); }
   .hw-secondary-btn { width:100%; border-radius:8px; background:#fff; color:#111c7a; padding:15px 18px; font-weight:800; border:1px solid #dbe3ef; display:flex; align-items:center; justify-content:center; gap:10px; }
   .hw-cancel { display:block; text-align:center; color:#94a3b8; font-size:13px; margin-top:18px; }
-  .game-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
-  .game-choice { border:1px solid #dbe3ef; background:#fff; border-radius:10px; padding:14px; cursor:pointer; display:flex; gap:10px; align-items:flex-start; }
-  .game-choice input { margin-top:4px; }
-  .game-choice strong { display:block; color:#111c7a; font-size:14px; }
-  .game-choice span { display:block; color:#64748b; font-size:12px; margin-top:3px; line-height:1.4; }
-  .game-note { border-radius:12px; background:#f0f9ff; border:1px solid #bae6fd; color:#0f5280; padding:14px 16px; font-size:13px; line-height:1.6; }
-  @media (max-width: 768px) { .game-grid { grid-template-columns:1fr; } }
+  .hw-test-card { border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#f8fafc; }
 </style>
 
 <div class="homework-create-page space-y-8">
+  <div>
+    <h3 class="font-headline text-3xl font-extrabold text-primary">Гэрийн даалгавар бүртгэх</h3>
+    <p class="text-slate-500 mt-2">Сурагчдад зориулсан шинэ даалгаврын мэдээллийг оруулах.</p>
+  </div>
+
   <form method="post" enctype="multipart/form-data" id="homeworkForm">
     <div class="grid lg:grid-cols-[1fr_310px] gap-8 items-start">
       <div class="space-y-7">
@@ -124,7 +164,7 @@ include __DIR__ . '/header.php';
 
           <div>
             <label class="hw-label">Гарчиг</label>
-            <input name="garchig" class="hw-input" placeholder="Жишээ: Гэрийн даалгавар #1" required>
+            <input name="garchig" class="hw-input" placeholder="Жишээ: Лаборатори №4 - Суурийн эффект" required>
           </div>
 
           <div>
@@ -161,72 +201,27 @@ include __DIR__ . '/header.php';
           </div>
         </section>
 
-        <section class="hw-card p-7 space-y-6">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h3 class="font-headline text-xl font-extrabold text-primary flex items-center gap-2">
-                <span class="material-symbols-outlined">extension</span>
-                1-5-р ангийн тоглоомчилсон даалгавар
-              </h3>
-              <p class="text-sm text-slate-500 mt-2">Бага ангийн хүүхдэд даалгаврыг аялал, шат, од, XP оноотойгоор харуулна.</p>
-            </div>
-            <label class="hw-switch" title="Тоглоомчилсон хэлбэрээр харуулах">
-              <input type="checkbox" name="togloomchilson" value="1" checked>
-              <span class="hw-slider"></span>
-            </label>
+        <section class="hw-card p-7 hidden" id="testFields">
+          <h3 class="font-headline text-xl font-extrabold text-primary mb-4">Тестийн асуултууд</h3>
+          <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 mb-4">
+            Тест төрлийн даалгаварт файл, видео хавсаргах боломжгүй. Асуулт бүр 4 сонголттой байна.
           </div>
-
-          <div class="game-note">Зөвлөмж: 1-5-р ангид нэг даалгаврыг 3-5 богино алхамтай, эерэг урамшууллын үгтэй оруулбал хүүхэд өөрөө хийхэд илүү ойлгомжтой байна.</div>
-
-          <div>
-            <label class="hw-label">Тоглоомын хэлбэр</label>
-            <div class="game-grid">
-              <label class="game-choice">
-                <input type="radio" name="togloom_turul" value="mission" checked>
-                <span><strong>Аялал</strong><span>Алхам алхмаар биелүүлэх даалгавар</span></span>
-              </label>
-              <label class="game-choice">
-                <input type="radio" name="togloom_turul" value="quiz">
-                <span><strong>Асуулт</strong><span>Богино асуултаар ахих хэлбэр</span></span>
-              </label>
-              <label class="game-choice">
-                <input type="radio" name="togloom_turul" value="puzzle">
-                <span><strong>Бодлого</strong><span>Таавар, бодлого тайлах мэдрэмж</span></span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label class="hw-label">Хүүхдэд харагдах зорилго</label>
-            <input name="togloom_zorilgo" class="hw-input" placeholder="Жишээ: Өнөөдөр 5 шинэ үг сурч, од цуглуулъя">
-          </div>
-
-          <div>
-            <label class="hw-label">Тоглоомын алхмууд</label>
-            <textarea name="togloom_alham" class="hw-textarea" style="min-height:120px" placeholder="1. Даалгавраа уншина&#10;2. 3 бодлого бодно&#10;3. Хариугаа зургаар эсвэл текстээр илгээнэ"></textarea>
-          </div>
-
-          <div class="grid md:grid-cols-3 gap-4">
-            <div>
-              <label class="hw-label">Од</label>
-              <input name="od_shagnal" type="number" min="1" max="5" value="3" class="hw-input">
-            </div>
-            <div>
-              <label class="hw-label">XP оноо</label>
-              <input name="turshlaga_onoo" type="number" min="0" value="10" class="hw-input">
-            </div>
-            <div>
-              <label class="hw-label">Урамшууллын үг</label>
-              <input name="tav_duudlaga" class="hw-input" placeholder="Чи чадна!">
-            </div>
-          </div>
+          <div id="questionsWrap" class="space-y-4"></div>
+          <button type="button" id="addQuestionBtn" class="w-full rounded-xl border border-slate-300 bg-white py-3 font-medium text-slate-700 mt-4">Асуулт нэмэх</button>
         </section>
-
       </div>
 
       <aside class="space-y-5 lg:sticky lg:top-24">
         <section class="hw-card p-7">
           <h3 class="hw-side-title">Тохиргоо</h3>
+
+          <div class="mb-5">
+            <label class="hw-label">Даалгаврын төрөл</label>
+            <select name="daalgavar_turul" id="daalgavarTurul" class="hw-select" required>
+              <option value="Энгийн">Энгийн</option>
+              <option value="Тест">Тест</option>
+            </select>
+          </div>
 
           <div class="mb-5">
             <label class="hw-label">Эхлэх огноо</label>
@@ -254,11 +249,15 @@ include __DIR__ . '/header.php';
             <span>Хоцорсон хариу хүлээн авах</span>
             <label class="hw-switch"><input type="checkbox" name="late_allowed" value="1"><span class="hw-slider"></span></label>
           </div>
+          <div class="hw-toggle-row">
+            <span>Сурагчдад мэдэгдэх</span>
+            <label class="hw-switch"><input type="checkbox" name="notify_students" value="1" checked><span class="hw-slider"></span></label>
+          </div>
         </section>
 
         <button class="hw-primary-btn" type="submit" name="save_action" value="publish">
           <span class="material-symbols-outlined">send</span>
-          Бүртгэх
+          Илгээх (Нийтлэх)
         </button>
         <a href="teacher_homeworks.php" class="hw-cancel">Үйлдлийг цуцлах</a>
       </aside>
@@ -268,11 +267,65 @@ include __DIR__ . '/header.php';
 
 <script>
 (function(){
+  const turul = document.getElementById('daalgavarTurul');
+  const attachmentSection = document.getElementById('attachmentSection');
+  const testFields = document.getElementById('testFields');
+  const wrap = document.getElementById('questionsWrap');
+  const addBtn = document.getElementById('addQuestionBtn');
   const fileInput = document.getElementById('fileInput');
   const selectedFile = document.getElementById('selectedFile');
   const selectedFileName = document.getElementById('selectedFileName');
   const videoBox = document.getElementById('videoBox');
   const videoInput = document.getElementById('videoInput');
+  let idx = 0;
+
+  function questionTemplate(i){
+    return `
+      <div class="hw-test-card space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="font-semibold">Асуулт ${i+1}</h4>
+          <button type="button" class="remove-question text-sm text-red-600">Устгах</button>
+        </div>
+        <textarea name="asuult[]" rows="2" class="w-full rounded-xl border-slate-300 px-4 py-3" placeholder="Асуулт оруулах"></textarea>
+        <div class="grid md:grid-cols-2 gap-3">
+          <input name="songolt1[]" class="w-full rounded-xl border-slate-300 px-4 py-3" placeholder="1-р сонголт">
+          <input name="songolt2[]" class="w-full rounded-xl border-slate-300 px-4 py-3" placeholder="2-р сонголт">
+          <input name="songolt3[]" class="w-full rounded-xl border-slate-300 px-4 py-3" placeholder="3-р сонголт">
+          <input name="songolt4[]" class="w-full rounded-xl border-slate-300 px-4 py-3" placeholder="4-р сонголт">
+        </div>
+        <select name="zuv_songolt[]" class="w-full rounded-xl border-slate-300 px-4 py-3">
+          <option value="">Зөв хариулт сонгох</option>
+          <option value="1">1-р сонголт</option>
+          <option value="2">2-р сонголт</option>
+          <option value="3">3-р сонголт</option>
+          <option value="4">4-р сонголт</option>
+        </select>
+      </div>`;
+  }
+
+  function addQuestion(){
+    const holder = document.createElement('div');
+    holder.innerHTML = questionTemplate(idx);
+    wrap.appendChild(holder.firstElementChild);
+    idx++;
+  }
+
+  function refreshMode(){
+    const isTest = turul.value === 'Тест';
+    attachmentSection.classList.toggle('hidden', isTest);
+    testFields.classList.toggle('hidden', !isTest);
+    if (isTest && wrap.children.length === 0) addQuestion();
+  }
+
+  addBtn?.addEventListener('click', addQuestion);
+  wrap?.addEventListener('click', function(e){
+    if (e.target.classList.contains('remove-question')) {
+      const cards = wrap.querySelectorAll('.hw-test-card');
+      if (cards.length > 1) e.target.closest('.hw-test-card').remove();
+    }
+  });
+
+  turul?.addEventListener('change', refreshMode);
   fileInput?.addEventListener('change', function(){
     if (fileInput.files && fileInput.files[0]) {
       selectedFileName.textContent = fileInput.files[0].name;
@@ -283,6 +336,7 @@ include __DIR__ . '/header.php';
     videoInput.classList.toggle('hidden');
     if (!videoInput.classList.contains('hidden')) videoInput.focus();
   });
+  refreshMode();
 })();
 </script>
 <?php include __DIR__ . '/footer.php'; ?>

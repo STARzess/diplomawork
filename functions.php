@@ -173,6 +173,8 @@ function upload_file_if_present(string $field): string {
     }
     $dir = ensure_upload_dir();
 
+    // Файлын нэрийг хэрэглэгчийн оруулсан эх нэрээр нь хадгална.
+    // Өмнөх хувилбар шиг time() + random тоо нэмж харагдуулахгүй.
     $original = basename((string)$_FILES[$field]['name']);
     $original = preg_replace('/[\\\/\:\*\?"\<\>\|]/u', '_', $original);
     $original = trim($original);
@@ -253,79 +255,6 @@ function homework_time_text(?string $due): string {
 function close_expired_homeworks(): void {
     try { db()->exec("UPDATE geriin_daalgavar SET tuluv='Хугацаа дууссан' WHERE duusah_ognoo < NOW() AND tuluv='Идэвхтэй'"); }
     catch (Throwable $e) { try { db()->exec("UPDATE geriin_daalgavar SET tuluv='Хаагдсан' WHERE duusah_ognoo < NOW() AND tuluv='Идэвхтэй'"); } catch (Throwable $ignore) {} }
-}
-
-function ensure_gamified_homework_schema(): void {
-    static $done = false;
-    if ($done) return;
-    $done = true;
-
-    try {
-        $columns = all_rows('SHOW COLUMNS FROM geriin_daalgavar');
-        $existing = array_column($columns, 'Field');
-        $adds = [
-            'togloomchilson' => "ADD COLUMN togloomchilson TINYINT(1) NOT NULL DEFAULT 0 AFTER daalgavar_turul",
-            'togloom_turul' => "ADD COLUMN togloom_turul VARCHAR(60) DEFAULT NULL AFTER togloomchilson",
-            'togloom_zorilgo' => "ADD COLUMN togloom_zorilgo VARCHAR(255) DEFAULT NULL AFTER togloom_turul",
-            'togloom_alham' => "ADD COLUMN togloom_alham TEXT DEFAULT NULL AFTER togloom_zorilgo",
-            'od_shagnal' => "ADD COLUMN od_shagnal INT NOT NULL DEFAULT 3 AFTER togloom_alham",
-            'turshlaga_onoo' => "ADD COLUMN turshlaga_onoo INT NOT NULL DEFAULT 10 AFTER od_shagnal",
-            'tav_duudlaga' => "ADD COLUMN tav_duudlaga VARCHAR(120) DEFAULT NULL AFTER turshlaga_onoo",
-        ];
-
-        foreach ($adds as $field => $sql) {
-            if (!in_array($field, $existing, true)) {
-                db()->exec("ALTER TABLE geriin_daalgavar {$sql}");
-            }
-        }
-    } catch (Throwable $e) {
-        // Normal homework pages remain usable if the database user cannot migrate.
-    }
-}
-
-function grade_number_from_class(?string $className): ?int {
-    if (!$className) return null;
-    if (preg_match('/^\s*(\d{1,2})/u', $className, $m)) {
-        return (int)$m[1];
-    }
-    return null;
-}
-
-function is_primary_grade(?string $className): bool {
-    $grade = grade_number_from_class($className);
-    return $grade !== null && $grade >= 1 && $grade <= 5;
-}
-
-function gamified_steps(?string $steps): array {
-    $lines = preg_split('/\R/u', (string)$steps) ?: [];
-    $lines = array_values(array_filter(array_map('trim', $lines), fn($line) => $line !== ''));
-    return $lines ?: ['Даалгавраа анхааралтай уншина', 'Алхам бүрээр бодож гүйцэтгэнэ', 'Хариугаа илгээнэ'];
-}
-
-function gamified_level_label(?string $type): string {
-    return match($type) {
-        'quiz' => 'Асуултын аялал',
-        'mission' => 'Даалгаврын аялал',
-        'puzzle' => 'Бодлогын тоглоом',
-        'story' => 'Өгүүллэгт аялал',
-        default => 'Суралцах аялал',
-    };
-}
-
-function gamified_progress_percent(?string $due, bool $submitted): int {
-    if ($submitted) return 100;
-    if (!$due) return 35;
-    try {
-        $now = new DateTime();
-        $dueDt = new DateTime($due);
-        if ($dueDt < $now) return 15;
-        $hours = max(1, ($dueDt->getTimestamp() - $now->getTimestamp()) / 3600);
-        if ($hours <= 24) return 70;
-        if ($hours <= 72) return 50;
-        return 35;
-    } catch (Throwable $e) {
-        return 35;
-    }
 }
 
 function status_badge_class(string $type): string {

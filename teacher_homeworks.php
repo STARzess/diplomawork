@@ -8,6 +8,7 @@ $pageTitle = 'Гэрийн даалгавар';
 
 $q = trim($_GET['q'] ?? '');
 $filterAngi = (int)($_GET['filter_angi'] ?? 0);
+$filterTurul = trim($_GET['filter_turul'] ?? '');
 $filterTuluv = trim($_GET['filter_tuluv'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_homework') {
@@ -33,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     exit;
 }
 
-$sql = 'SELECT gd.daalgavar_id, gd.garchig, gd.tailbar, \'Энгийн\' AS daalgavar_turul, gd.ogson_ognoo, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.tuluv,
+$sql = 'SELECT gd.daalgavar_id, gd.garchig, gd.tailbar, gd.daalgavar_turul, gd.ogson_ognoo, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.tuluv,
                h.hicheel_ner, h.hicheel_kod, a.angi_id, a.angi_ner,
                COUNT(DISTINCT dh.hariu_id) AS hariu_too,
                COUNT(DISTINCT u.unelgee_id) AS unelgee_too
@@ -52,12 +53,12 @@ if ($q !== '') {
     array_push($params, $like, $like, $like, $like);
 }
 if ($filterAngi > 0) { $sql .= ' AND a.angi_id = ?'; $params[] = $filterAngi; }
-
+if ($filterTurul !== '') { $sql .= ' AND gd.daalgavar_turul = ?'; $params[] = $filterTurul; }
 $sql .= ' GROUP BY gd.daalgavar_id ORDER BY gd.duusah_ognoo DESC, gd.daalgavar_id DESC';
 
 $rows = all_rows($sql, $params);
 $myClasses = all_rows('SELECT DISTINCT a.angi_id, a.angi_ner FROM hicheel_bagsh hb JOIN angi a ON a.angi_id=hb.angi_id WHERE hb.bagsh_id=? ORDER BY a.angi_ner', [$teacherId]);
-$hasFilter = $q !== '' || $filterAngi > 0 || $filterTuluv !== '';
+$hasFilter = $q !== '' || $filterAngi > 0 || $filterTurul !== '' || $filterTuluv !== '';
 
 include __DIR__ . '/header.php';
 ?>
@@ -72,13 +73,18 @@ include __DIR__ . '/header.php';
         <a class="inline-flex items-center justify-center rounded-2xl bg-primary text-white px-4 py-2.5 font-medium" href="homework_create.php">Даалгавар нэмэх</a>
       </div>
     </div>
-    <form method="get" class="grid grid-cols-2 md:grid-cols-4 gap-2">
+    <form method="get" class="grid grid-cols-2 md:grid-cols-5 gap-2">
       <div class="col-span-2">
         <input name="q" value="<?= e($q) ?>" class="w-full rounded-2xl border-slate-300 px-4 py-2.5 text-sm bg-white" placeholder="Даалгавар, хичээл эсвэл ангиар хайх…">
       </div>
       <select name="filter_angi" class="rounded-2xl border-slate-300 px-3 py-2.5 text-sm bg-white">
         <option value="">Бүх анги</option>
         <?php foreach ($myClasses as $c): ?><option value="<?= (int)$c['angi_id'] ?>" <?= $filterAngi===(int)$c['angi_id'] ? 'selected' : '' ?>><?= e($c['angi_ner']) ?></option><?php endforeach; ?>
+      </select>
+      <select name="filter_turul" class="rounded-2xl border-slate-300 px-3 py-2.5 text-sm bg-white">
+        <option value="">Бүх төрөл</option>
+        <option value="Энгийн" <?= $filterTurul==='Энгийн' ? 'selected' : '' ?>>Энгийн</option>
+        <option value="Тест" <?= $filterTurul==='Тест' ? 'selected' : '' ?>>Тест</option>
       </select>
       <button class="bg-slate-900 text-white rounded-2xl px-4 py-2.5 font-medium text-sm">Шүүх</button>
     </form>
@@ -90,6 +96,7 @@ include __DIR__ . '/header.php';
           <th class="text-left p-4">Гарчиг</th>
           <th class="text-left p-4">Хичээл</th>
           <th class="text-left p-4">Анги</th>
+          <th class="text-left p-4">Төрөл</th>
           <th class="text-left p-4">Дуусах огноо</th>
           <th class="text-left p-4">Төлөв</th>
           <th class="text-left p-4">Хариу</th>
@@ -108,6 +115,7 @@ include __DIR__ . '/header.php';
           <td class="p-4"><div class="font-semibold text-slate-900"><?= e($row['garchig']) ?></div><div class="text-xs text-slate-500 mt-1 line-clamp-2"><?= e((string)$row['tailbar']) ?></div></td>
           <td class="p-4"><?= e($row['hicheel_ner']) ?></td>
           <td class="p-4"><span class="inline-flex bg-indigo-50 text-indigo-700 text-xs font-semibold px-2 py-1 rounded-lg"><?= e($row['angi_ner']) ?></span></td>
+          <td class="p-4 whitespace-nowrap"><?= e($row['daalgavar_turul'] ?: 'Энгийн') ?></td>
           <td class="p-4 min-w-[190px]"><div><?= e(format_dt($row['duusah_ognoo'])) ?></div><div class="text-xs <?= $overdue ? 'text-red-600' : 'text-slate-500' ?> mt-1 leading-5"><?= e(homework_time_text($row['duusah_ognoo'])) ?></div></td>
           <td class="p-4 whitespace-nowrap">
             <?php if ($overdue): ?>
@@ -125,7 +133,7 @@ include __DIR__ . '/header.php';
           <td class="p-4">
             <div class="flex flex-wrap gap-2">
               <a class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium" href="homework_edit.php?id=<?= (int)$row['daalgavar_id'] ?>">Засах</a>
-
+              <?php if (($row['daalgavar_turul'] ?: 'Энгийн') === 'Тест'): ?><a class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium" href="test_question_manage.php?id=<?= (int)$row['daalgavar_id'] ?>">Асуулт</a><?php endif; ?>
               <a class="rounded-lg bg-indigo-700 text-white px-3 py-1.5 text-xs font-medium" href="submission_review.php?daalgavar_id=<?= (int)$row['daalgavar_id'] ?>">Хариу шалгах</a>
               <form method="post" onsubmit="return confirm('Энэ гэрийн даалгаврыг устгах уу? Устгавал холбогдох хариу, үнэлгээ мөн устах боломжтой.');" class="inline">
                 <input type="hidden" name="action" value="delete_homework">

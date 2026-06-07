@@ -14,7 +14,7 @@ if (!$hariuId) {
 
 $submission = one_row(
     'SELECT dh.hariu_id, dh.daalgavar_id, dh.suragch_id, dh.tekst_hariu, dh.file_zam, dh.video_link, dh.ilgeesen_ognoo, dh.tuluv,
-            gd.garchig, gd.tailbar, \'Энгийн\' AS daalgavar_turul, gd.ogson_ognoo, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.tuluv AS daalgavar_tuluv,
+            gd.garchig, gd.tailbar, gd.daalgavar_turul, gd.ogson_ognoo, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.tuluv AS daalgavar_tuluv,
             h.hicheel_ner, a.angi_ner, u.unelgee_id, u.avsan_onoo
      FROM daalgavriin_hariu dh
      JOIN geriin_daalgavar gd ON gd.daalgavar_id = dh.daalgavar_id
@@ -33,7 +33,7 @@ if (!$submission) {
     exit;
 }
 
-if (!empty($submission['unelgee_id']) || $submission['avsan_onoo'] !== null) {
+if (!empty($submission['unelgee_id']) || $submission['avsan_onoo'] !== null || ($submission['daalgavar_turul'] ?? 'Энгийн') === 'Тест') {
     flash('Багш шалгасан эсвэл тестийн хариу тул засах боломжгүй.', 'error');
     header('Location: homework_view.php?id=' . (int)$submission['daalgavar_id']);
     exit;

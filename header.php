@@ -52,6 +52,7 @@ function nav_item(string $href, string $label, string $icon, string $current, ar
   <link rel="stylesheet" href="assets/styles.css?v=dashboard_fix_20260507">
 
   <style>
+    /* Dashboard critical CSS: браузер CSS cache хийсэн үед ч dashboard эвдрэхгүй */
     .dashboard-stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:1.25rem!important;margin-bottom:1.75rem!important}.dashboard-stat-card{background:#fff!important;border:1px solid #e2e8f0!important;border-radius:1.35rem!important;box-shadow:0 10px 30px rgba(15,23,42,.06)!important;padding:1.35rem!important;position:relative!important;overflow:hidden!important}.dashboard-stat-card:after{content:"";position:absolute;right:-22px;bottom:-22px;width:94px;height:94px;border-radius:999px;background:rgba(99,102,241,.08)}.stat-topline{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.75rem!important;margin-bottom:1rem!important}.stat-icon{width:3.15rem;height:3.15rem;border-radius:1rem;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:#eef2ff;color:#1a237e}.stat-icon.green{background:#dcfce7;color:#166534}.stat-icon.yellow{background:#fef3c7;color:#b45309}.stat-icon.red{background:#fee2e2;color:#b91c1c}.stat-icon.sky{background:#e0f2fe;color:#0369a1}.stat-trend{font-size:.82rem;font-weight:700;padding:.42rem .68rem;border-radius:.7rem;background:#dcfce7;color:#166534}.stat-trend.neutral{background:#e2e8f0;color:#475569}.stat-trend.alert{background:#fee2e2;color:#b91c1c}.stat-value{font-size:2.15rem!important;line-height:1!important;font-weight:800!important;color:#1a237e!important;margin-bottom:.45rem!important}.stat-label{font-size:.98rem;color:#526069;font-weight:700;letter-spacing:.02em}.dashboard-grid-2{display:grid!important;grid-template-columns:minmax(0,2fr) minmax(280px,360px)!important;gap:1.5rem!important}.dashboard-panel{background:#fff!important;border:1px solid #e2e8f0!important;border-radius:1.4rem!important;box-shadow:0 10px 30px rgba(15,23,42,.06)!important;overflow:hidden!important}.panel-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.75rem!important;padding:1.35rem 1.55rem!important;border-bottom:1px solid #edf2f7}.panel-head h3{font-size:1.05rem;font-weight:800;color:#1a237e}.course-tile-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:1rem!important}.course-tile{border:1px solid #e5e7eb!important;border-radius:1.2rem!important;padding:1.2rem!important;background:#fff!important;display:grid!important;grid-template-columns:auto 1fr!important;gap:1rem!important}.course-tile .tile-icon{width:3.8rem;height:3.8rem;border-radius:1rem;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:#eef2ff;color:#1a237e}.course-tile .course-title{color:#1a237e!important;font-weight:800!important;font-size:1rem!important;margin-bottom:.28rem!important}.muted-lines{color:#64748b;font-size:.92rem}.progress-rail{width:100%;height:.55rem;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden}.progress-rail.light{background:#e5e7eb}.progress-bar{height:100%;border-radius:inherit;background:#8df06c}.progress-bar.blue{background:#1a237e}.status-card-strong{background:linear-gradient(135deg,#1a237e 0%,#2c3696 100%)!important;color:#fff!important}.status-card-strong h3,.status-card-strong a{color:#fff}.list-plain{padding:1.35rem;display:grid;gap:1rem}.list-plain-item{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding-bottom:1rem;border-bottom:1px solid #edf2f7}.list-plain-item:last-child{border-bottom:0;padding-bottom:0}.avatar-soft{width:2.85rem;height:2.85rem;border-radius:1rem;background:linear-gradient(135deg,#eef2ff,#e2e8f0);color:#1a237e;font-weight:800;display:inline-flex;align-items:center;justify-content:center}.dash-btn{display:inline-flex!important;align-items:center!important;gap:.55rem;border-radius:1rem;padding:.95rem 1.3rem;font-weight:700;border:1px solid #dbe2ea;background:#fff;color:#1a237e;box-shadow:0 6px 18px rgba(15,23,42,.05)}.dash-btn-primary{background:#1a237e!important;color:#fff!important;border-color:#1a237e}.dashboard-table{width:100%}.dashboard-table thead{background:#f8fafc}.dashboard-table th,.dashboard-table td{padding:1rem 1.15rem;font-size:.95rem;text-align:left;vertical-align:top}.link-card-list{padding:1.3rem;display:grid;gap:.95rem}.link-card{display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:1rem 1.05rem;border-radius:1rem;background:#f8fafc;border:1px solid #e6edf5;color:#0f172a}.link-card .iconwrap{width:2.85rem;height:2.85rem;border-radius:.9rem;display:inline-flex;align-items:center;justify-content:center;background:#eef2ff;color:#1a237e}.quick-pill{display:inline-flex;padding:.33rem .75rem;border-radius:999px;background:#eef2ff;color:#1a237e;font-size:.76rem;font-weight:700}.action-chip{display:inline-flex;padding:.4rem .75rem;border-radius:.8rem;font-weight:700;font-size:.78rem}.action-chip.info{background:#dbeafe;color:#1d4ed8}.action-chip.green{background:#dcfce7;color:#166534}.action-chip.red{background:#fee2e2;color:#b91c1c}.action-chip.warn{background:#fef3c7;color:#92400e}.dashboard-quick-actions{display:flex;flex-wrap:wrap;gap:.85rem;padding:1.2rem 1.4rem 1.4rem}.dashboard-quick-actions a{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.9rem 1.15rem;border-radius:999px;border:1px solid #dbe2ea;background:#fff;color:#1a237e;font-weight:700}@media(max-width:1280px){.dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}.dashboard-grid-2{grid-template-columns:1fr!important}}@media(max-width:768px){.dashboard-stats,.course-tile-grid{grid-template-columns:1fr!important}}
   </style>
 </head>
@@ -81,7 +82,7 @@ function nav_item(string $href, string $label, string $icon, string $current, ar
         <?= nav_item('student_list.php', 'Сурагч', 'school', $current) ?>
       <?php endif; ?>
 
-      <?php if ($role === 'Сургалтын алба'): ?>
+      <?php if (in_array($role, ['Админ', 'Сургалтын алба'], true)): ?>
         <?= nav_item('class_list.php', 'Анги', 'groups', $current) ?>
       <?php endif; ?>
 
@@ -90,7 +91,7 @@ function nav_item(string $href, string $label, string $icon, string $current, ar
         <?= nav_item('student_courses.php', 'Хичээлүүд', 'menu_book', $current, ['student_course_detail.php']) ?>
       <?php endif; ?>
 
-      <?php if (in_array($role, ['Сургалтын алба','Багш'], true)): ?>
+      <?php if (in_array($role, ['Админ','Сургалтын алба','Багш'], true)): ?>
         <?= nav_item('course_list.php', 'Хичээлүүд', 'menu_book', $current, ['course_detail.php']) ?>
       <?php endif; ?>
 
@@ -98,12 +99,12 @@ function nav_item(string $href, string $label, string $icon, string $current, ar
         <?= nav_item('course_create.php', 'Хичээл бүртгэх', 'library_add', $current) ?>
       <?php endif; ?>
 
-      <?php if ($role === 'Сургалтын алба'): ?>
+      <?php if (in_array($role, ['Админ','Сургалтын алба'], true)): ?>
         <?= nav_item('course_assignment.php', 'Багш, ангид хуваарилах', 'fact_check', $current) ?>
       <?php endif; ?>
 
       <?php if ($role === 'Багш'): ?>
-        <?= nav_item('teacher_homeworks.php', 'Гэрийн даалгавар', 'assignment', $current, ['homework_create.php','homework_edit.php']) ?>
+        <?= nav_item('teacher_homeworks.php', 'Гэрийн даалгавар', 'assignment', $current, ['homework_create.php','homework_edit.php','test_question_manage.php']) ?>
         <?= nav_item('submission_review.php', 'Илгээсэн хариу шалгах', 'rate_review', $current) ?>
       <?php endif; ?>
 
@@ -112,9 +113,7 @@ function nav_item(string $href, string $label, string $icon, string $current, ar
         <?= nav_item('submission_create.php', 'Хариу илгээх', 'send', $current) ?>
       <?php endif; ?>
 
-      <?php if ($role !== 'Админ'): ?>
-        <?= nav_item('reports.php', $role === 'Сурагч' ? 'Миний үнэлгээ' : 'Тайлан', 'assessment', $current) ?>
-      <?php endif; ?>
+      <?= nav_item('reports.php', $role === 'Сурагч' ? 'Миний үнэлгээ' : 'Тайлан', 'assessment', $current) ?>
     </nav>
 
     <div class="mt-auto border-t border-slate-200/60 pt-4 space-y-1">

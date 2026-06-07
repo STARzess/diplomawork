@@ -22,7 +22,7 @@ if (!$course) {
     exit;
 }
 
-$homeworks = all_rows('SELECT gd.daalgavar_id, gd.garchig, gd.tailbar, \'Энгийн\' AS daalgavar_turul, gd.ogson_ognoo, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.tuluv AS daalgavar_tuluv,
+$homeworks = all_rows('SELECT gd.daalgavar_id, gd.garchig, gd.tailbar, gd.daalgavar_turul, gd.ogson_ognoo, gd.duusah_ognoo, gd.hamgiin_ih_onoo, gd.tuluv AS daalgavar_tuluv,
                              dh.hariu_id, dh.tuluv AS hariu_tuluv, dh.ilgeesen_ognoo, u.avsan_onoo
                       FROM geriin_daalgavar gd
                       LEFT JOIN daalgavriin_hariu dh ON dh.daalgavar_id = gd.daalgavar_id AND dh.suragch_id = ?
@@ -52,7 +52,7 @@ include __DIR__ . '/header.php';
     <div class="p-5 border-b"><h3 class="font-semibold text-lg">Энэ хичээлийн гэрийн даалгаврууд</h3></div>
     <div class="overflow-auto">
       <table class="w-full text-sm">
-        <thead class="bg-slate-50"><tr><th class="text-left p-4">Гарчиг</th><th class="text-left p-4">Дуусах огноо</th><th class="text-left p-4">Оноо</th><th class="text-left p-4">Төлөв</th><th class="text-left p-4">Үйлдэл</th></tr></thead>
+        <thead class="bg-slate-50"><tr><th class="text-left p-4">Гарчиг</th><th class="text-left p-4">Төрөл</th><th class="text-left p-4">Дуусах огноо</th><th class="text-left p-4">Оноо</th><th class="text-left p-4">Төлөв</th><th class="text-left p-4">Үйлдэл</th></tr></thead>
         <tbody>
         <?php foreach ($homeworks as $row): ?>
           <?php
@@ -63,12 +63,13 @@ include __DIR__ . '/header.php';
           ?>
           <tr class="border-t align-top hover:bg-slate-50/60">
             <td class="p-4"><div class="font-semibold text-slate-900"><?= e($row['garchig']) ?></div><div class="text-xs text-slate-500 mt-1 line-clamp-2"><?= e((string)$row['tailbar']) ?></div></td>
+            <td class="p-4"><?= e($row['daalgavar_turul'] ?: 'Энгийн') ?></td>
             <td class="p-4"><div><?= e(format_dt($row['duusah_ognoo'])) ?></div><div class="text-xs <?= $overdue ? 'text-red-600' : 'text-slate-500' ?> mt-1"><?= e(homework_time_text($row['duusah_ognoo'])) ?></div></td>
             <td class="p-4"><?= e(format_score_with_letter($row['avsan_onoo'] ?? null)) ?></td>
             <td class="p-4"><span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold <?= e(status_badge_class($statusType)) ?>"><?= e($statusText) ?></span></td>
             <td class="p-4"><div class="flex flex-wrap gap-2">
               <a class="inline-flex px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" href="homework_view.php?id=<?= (int)$row['daalgavar_id'] ?>">Харах</a>
-              <?php if (!$row['hariu_id'] && !$overdue): ?><a class="inline-flex px-4 py-2 rounded-xl bg-indigo-700 text-white" href="submission_create.php?daalgavar_id=<?= (int)$row['daalgavar_id'] ?>">Хариу илгээх</a><?php endif; ?>
+              <?php if (!$row['hariu_id'] && !$overdue): ?><a class="inline-flex px-4 py-2 rounded-xl bg-indigo-700 text-white" href="submission_create.php?daalgavar_id=<?= (int)$row['daalgavar_id'] ?>"><?= ($row['daalgavar_turul'] ?: 'Энгийн') === 'Тест' ? 'Тест бөглөх' : 'Хариу илгээх' ?></a><?php endif; ?>
             </div></td>
           </tr>
         <?php endforeach; ?>

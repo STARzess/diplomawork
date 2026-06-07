@@ -6,6 +6,7 @@ $pdo       = db();
 $canManage = in_array(current_role(), ['Админ','Сургалтын алба'], true);
 $editingId = (int)($_GET['edit'] ?? 0);
 
+/* ── POST: бүртгэх / засах / устгах ─────────────────────────── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canManage) {
     $action = $_POST['action'] ?? 'create';
 

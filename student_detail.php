@@ -101,7 +101,7 @@ $submitted = (int)($stats['ilgeesen'] ?? 0);
 $avgScore = (float)($stats['dundaj_onoo'] ?? 0);
 $completion = $totalHomework > 0 ? min(100, round(($submitted / $totalHomework) * 100)) : 0;
 
-$recentGrades = all_rows('SELECT gd.garchig, \'Энгийн\' AS daalgavar_turul, h.hicheel_ner, u.avsan_onoo, u.bagshiin_tailbar, u.unelsen_ognoo
+$recentGrades = all_rows('SELECT gd.garchig, gd.daalgavar_turul, h.hicheel_ner, u.avsan_onoo, u.bagshiin_tailbar, u.unelsen_ognoo
                          FROM unelgee u
                          JOIN daalgavriin_hariu dh ON dh.hariu_id=u.hariu_id
                          JOIN geriin_daalgavar gd ON gd.daalgavar_id=dh.daalgavar_id
@@ -110,7 +110,7 @@ $recentGrades = all_rows('SELECT gd.garchig, \'Энгийн\' AS daalgavar_turul
                          WHERE dh.suragch_id=?
                          ORDER BY u.unelsen_ognoo DESC LIMIT 5', [$studentId]);
 
-$homeworkRows = all_rows('SELECT gd.garchig, \'Энгийн\' AS daalgavar_turul, gd.duusah_ognoo, h.hicheel_ner, dh.ilgeesen_ognoo, dh.tuluv AS hariu_tuluv, u.avsan_onoo
+$homeworkRows = all_rows('SELECT gd.garchig, gd.daalgavar_turul, gd.duusah_ognoo, h.hicheel_ner, dh.ilgeesen_ognoo, dh.tuluv AS hariu_tuluv, u.avsan_onoo
                          FROM geriin_daalgavar gd
                          JOIN hicheel_bagsh hb ON hb.hicheel_bagsh_id=gd.hicheel_bagsh_id
                          JOIN hicheel h ON h.hicheel_id=hb.hicheel_id
